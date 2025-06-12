@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modern Functional Calculator</title>
+  <style>
+    /* Reset and base styles */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #3e3e5e);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .calculator {
+      background: rgba(30, 30, 47, 0.9);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      width: 320px;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 24px;
+      user-select: none;
+    }
+    .display {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px 16px;
+      min-height: 72px;
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: right;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      color: #e0e0e0;
+      box-shadow: inset 0 0 6px #0006;
+      user-select: text;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    button {
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: 12px;
+      padding: 18px 0;
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #f4f4f4;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.15s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      outline-offset: 2px;
+      outline-color: transparent;
+    }
+    button:focus-visible {
+      outline: 2px solid #6ee7b7;
+      outline-offset: 2px;
+    }
+    button:hover {
+      background: #6ee7b7;
+      color: #1f2937;
+      transform: scale(1.05);
+    }
+    button.operator {
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+    }
+    button.operator:hover {
+      background: #3b82f6;
+      color: white;
+    }
+    button.equal {
+      background: #10b981;
+      color: white;
+      font-weight: 700;
+      grid-column: span 2;
+    }
+    button.equal:hover {
+      background: #34d399;
+      color: white;
+    }
+    button.clear {
+      background: #ef4444;
+      color: white;
+      font-weight: 700;
+    }
+    button.clear:hover {
+      background: #f87171;
+      color: white;
+    }
+    button.backspace {
+      background: #f59e0b;
+      color: white;
+      font-weight: 700;
+    }
+    button.backspace:hover {
+      background: #fbbf24;
+      color: white;
+    }
+    /* Responsive text size for display */
+    @media (max-width: 400px) {
+      .display {
+        font-size: 1.8rem;
+        padding: 16px 12px;
+      }
+      button {
+        padding: 14px 0;
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main role="main" class="calculator" aria-label="Calculator">
+    <div class="display" id="display" aria-live="polite" aria-atomic="true">0</div>
+    <div class="buttons" role="group" aria-label="Calculator buttons">
+      <button type="button" class="clear" data-action="clear" aria-label="Clear all">C</button>
+      <button type="button" class="backspace" data-action="backspace" aria-label="Backspace">⌫</button>
+      <button type="button" class="operator" data-value="/" aria-label="Divide">÷</button>
+      <button type="button" class="operator" data-value="*" aria-label="Multiply">×</button>
+
+      <button type="button" data-value="7" aria-label="7">7</button>
+      <button type="button" data-value="8" aria-label="8">8</button>
+      <button type="button" data-value="9" aria-label="9">9</button>
+      <button type="button" class="operator" data-value="-" aria-label="Subtract">−</button>
+
+      <button type="button" data-value="4" aria-label="4">4</button>
+      <button type="button" data-value="5" aria-label="5">5</button>
+      <button type="button" data-value="6" aria-label="6">6</button>
+      <button type="button" class="operator" data-value="+" aria-label="Add">+</button>
+
+      <button type="button" data-value="1" aria-label="1">1</button>
+      <button type="button" data-value="2" aria-label="2">2</button>
+      <button type="button" data-value="3" aria-label="3">3</button>
+      <button type="button" class="equal" data-action="calculate" aria-label="Equals">=</button>
+
+      <button type="button" data-value="0" style="grid-column: span 2;" aria-label="0">0</button>
+      <button type="button" data-value="." aria-label="Decimal point">.</button>
+    </div>
+  </main>
+
+  <script>
+    (function() {
+      const display = document.getElementById('display');
+      let input = '';
+      let lastInputIsOperator = false;
+
+      // Allowed characters in input for validation
+      const validChars = '0123456789+-*/.';
+
+      // Set display text safely
+      function updateDisplay(text) {
+        display.textContent = text || '0';
+      }
+
+      // Clear all input
+      function clearAll() {
+        input = '';
+        lastInputIsOperator = false;
+        updateDisplay('0');
+      }
+
+      // Remove last character (backspace)
+      function backspace() {
+        if (input.length > 0) {
+          input = input.slice(0, -1);
+          if (input.length === 0) {
+            updateDisplay('0');
+          } else {
+            updateDisplay(input);
+          }
+          lastInputIsOperator = /[\+\-\*\/]$/.test(input);
+        }
+      }
+
+      // Validate input safe for eval replacing ÷ and × if necessary
+      function sanitizeInput(str) {
+        return str.replace(/[^0-9+\-*/.]/g, '');
+      }
+
+      // Evaluate expression safely with error handling
+      function calculateResult() {
+        try {
+          // last char operator remove
+          let expression = input;
+          if (/[\+\-\*\/.]$/.test(expression)) {
+            expression = expression.slice(0, -1);
+          }
+          expression = sanitizeInput(expression);
+
+          if (!expression) {
+            updateDisplay('0');
+            input = '';
+            lastInputIsOperator = false;
+            return;
+          }
+
+          // Use Function constructor to safely evaluate expression (avoid eval)
+          // We ensure only allowed characters exist beforehand
+          if (/[^0-9+\-*/.]/.test(expression)) {
+            throw new Error('Invalid characters detected');
+          }
+          // Prevent multiple dots in one number by evaluation fallback
+
+          // Evaluate expression
+          let result = Function('"use strict";return (' + expression + ')')();
+
+          if (!isFinite(result)) throw new Error('Math error');
+
+          // Format result nicely
+          result = +parseFloat(result.toFixed(12)); // Remove floating point noise
+
+          updateDisplay(result.toString());
+          input = result.toString();
+          lastInputIsOperator = false;
+        } catch (e) {
+          updateDisplay('Error');
+          input = '';
+          lastInputIsOperator = false;
+        }
+      }
+
+      // Add value to input, with basic validation rules
+      function addInput(value) {
+        if (value === '.') {
+          // Prevent multiple decimals in the current number (after last operator)
+          const parts = input.split(/[\+\-\*\/]/);
+          const lastNumber = parts.pop();
+          if (lastNumber.includes('.')) {
+            return;
+          }
+          if (lastNumber.length === 0) {
+            // if no number before dot, prepend 0
+            input += '0';
+          }
+        }
+
+        if (/[+\-*/]/.test(value)) {
+          // If last input is also operator, replace it
+          if (input.length === 0 && value !== '-') {
+            // Can't start expression with operator except minus
+            return;
+          }
+          if (lastInputIsOperator) {
+            input = input.slice(0, -1) + value;
+          } else {
+            input += value;
+          }
+          lastInputIsOperator = true;
+        } else {
+          input += value;
+          lastInputIsOperator = false;
+        }
+        updateDisplay(input);
+      }
+
+      // Handle button clicks
+      function onButtonClick(e) {
+        const target = e.target;
+        if (!target.matches('button')) return;
+
+        const action = target.dataset.action;
+        const value = target.dataset.value;
+
+        switch(action) {
+          case 'clear':
+            clearAll();
+            break;
+          case 'backspace':
+            backspace();
+            break;
+          case 'calculate':
+            calculateResult();
+            break;
+          default:
+            if (value) {
+              addInput(value);
+            }
+            break;
+        }
+      }
+
+      // Handle keyboard input
+      function onKeyDown(e) {
+        if (e.repeat) return; // ignore repeat keys
+
+        const key = e.key;
+        if ((key >= '0' && key <= '9') || key === '.') {
+          e.preventDefault();
+          addInput(key);
+        } else if (['+', '-', '*', '/'].includes(key)) {
+          e.preventDefault();
+          addInput(key);
+        } else if (key === 'Enter' || key === '=') {
+          e.preventDefault();
+          calculateResult();
+        } else if (key === 'Backspace') {
+          e.preventDefault();
+          backspace();
+        } else if (key === 'Escape' || key.toLowerCase() === 'c') {
+          e.preventDefault();
+          clearAll();
+        }
+      }
+
+      // Initialize
+      function init() {
+        clearAll();
+        document.querySelector('.buttons').addEventListener('click', onButtonClick);
+        window.addEventListener('keydown', onKeyDown);
+      }
+      init();
+    })();
+  </script>
+</body>
+</html>
+
